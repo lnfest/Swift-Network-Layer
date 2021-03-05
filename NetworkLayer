@@ -1,0 +1,89 @@
+
+import Foundation
+
+
+private let DOMAIN = "http://localhost:5000"
+
+enum BaseURL {
+    static let domain = DOMAIN
+}
+
+enum HTTPMethod: String {
+    case GET, POST, PUT, DELETE
+}
+
+public final class NetworkLayer {
+    enum Routes: String {
+        case login
+        
+        var link: String {
+            switch self {
+            case .login:
+                return "\(BaseURL.domain)/auth/login"
+                
+            }
+        }
+    }
+    
+    static func configureRequest(URLString: String, method: HTTPMethod, body: Data?, completion: @escaping (_ data: Data?, _ response: URLResponse?, _ error: Error?) -> Void) {
+        guard let url = URL(string: URLString) else {
+            print("Error: cannot create URL")
+            let error = NetworkError.invalidUrl
+            completion(nil, nil, error)
+            return
+        }
+        
+        let session = URLSession.shared
+        var request = URLRequest(url: url)
+        let authToken = UserDefaults.standard.string(forKey: UDKeys.api_token.rawValue)
+        if let authToken = authToken {
+            request.addValue("Bearer \(authToken)", forHTTPHeaderField: "Authorization")
+        }
+        if let body = body {
+            request.httpBody = body
+            request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+        }
+        request.httpMethod = method.rawValue
+        let task = session.dataTask(with: request) {
+            (data, response, error) in
+            completion(data, response, error)
+        }
+        task.resume()
+    }
+    
+    static func get(route: Routes, additionalRoute: String?, completion: @escaping (_ data: Data?, _ response: URLResponse?, _ error: Error?) -> Void) {
+        DispatchQueue.global(qos: .default).async {
+            APIService.configureRequest(URLString: route.link + (additionalRoute ?? ""), method: .GET,body: nil, completion: completion)
+        }
+    }
+    
+    static func post(route: Routes, additionalRoute: String?, body: Data, completion: @escaping (_ data: Data?, _ response: URLResponse?, _ error: Error?) -> Void) {
+        DispatchQueue.global(qos: .default).async {
+            APIService.configureRequest(URLString: route.link + (additionalRoute ?? ""), method: .POST, body: body, completion: completion)
+        }
+    }
+    static func delete(route: Routes, additionalRoute: String?, params: [String: Any]?, completion: @escaping (_ data: Data?, _ response: URLResponse?, _ error: Error?) -> Void) {
+        DispatchQueue.global(qos: .default).async {
+            APIService.configureRequest(URLString: route.link + (additionalRoute ?? ""), method: .DELETE, body: nil, completion: completion)
+        }
+    }
+    
+    static func put(route: Routes, additionalRoute: String?, body: Data, completion: @escaping (_ data: Data?, _ response: URLResponse?, _ error: Error?) -> Void) {
+        DispatchQueue.global(qos: .default).async {
+            APIService.configureRequest(URLString: route.link + (additionalRoute ?? ""), method: .PUT, body: body, completion: completion)
+        }
+    }
+}
+
+enum NetworkError: Error {
+    case invalidUrl
+}
+
+extension NetworkError: LocalizedError {
+    public var errorDescription: String? {
+        switch self {
+        case .invalidUrl:
+            return NSLocalizedString("Current url is invalid", comment: "Invalid Url")
+        }
+    }
+}

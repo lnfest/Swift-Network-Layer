@@ -10,7 +10,6 @@
                 APIService.post(route: .login, additionalRoute: nil, body: body) { (data, response, error) in
                     DispatchQueue.main.async {
                         if let httpResponse = response as? HTTPURLResponse, let data = data  {
-                            print(httpResponse)
                             switch httpResponse.statusCode {
                             case 200:
                                 // decode your data
